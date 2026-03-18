@@ -6,6 +6,7 @@ import { Filter } from "lucide-react";
 import { BottomNav } from "./_components/bottom-nav";
 import { ImovelDestaqueCard } from "./_components/imoveis-destaque";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 
 interface Property {
   id: string;
@@ -20,6 +21,7 @@ interface Property {
 }
 
 export default function AppHome() {
+  const { user } = useUser();
   const [imoveis, setImoveis] = useState<Property[]>([]);
   const [carregando, setCarregando] = useState(true);
 
@@ -77,12 +79,11 @@ export default function AppHome() {
 
         <div className="relative z-10 flex justify-between items-end mb-4">
           <div>
-            <h2 className="text-3xl font-bold mb-1">Olá, Paulo</h2>
+            <h2 className="text-3xl font-bold mb-1">
+              Olá, {user?.firstName || "Visitante"}
+            </h2>
             <p className="text-gray-200 text-sm">Bora buscar hoje?</p>
           </div>
-          <button className="bg-teal-400 hover:bg-teal-500 text-white font-semibold py-2 px-6 rounded-full shadow-lg transition">
-            Bora!
-          </button>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useQueryStates, parseAsBoolean, parseAsString } from "nuqs";
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { ChatBubble } from "./ChatComponents";
 import { ImovelListCard } from "../imovel-list-card";
+import { useAuth } from "@clerk/nextjs";
 
 const SUGGESTED_MESSAGES = [
   "Quero comprar um apartamento",
@@ -30,6 +31,28 @@ const chatFormSchema = z.object({
 });
 
 type ChatFormValues = z.infer<typeof chatFormSchema>;
+
+type ProfileData = {
+  id: string;
+  name: string | null;
+  plan: string | null;
+  bedrooms: number | null;
+  parkingSpots: number | null;
+  bathrooms: number | null;
+  neighborhood: string | null;
+  onboardingDone: boolean;
+};
+
+type OnboardingStep =
+  | "name"
+  | "plan"
+  | "bedrooms"
+  | "parkingSpots"
+  | "bathrooms"
+  | "neighborhood"
+  | null;
+
+const API_URL = "http://localhost:8081";
 
 function buildPropertyImageUrl(mainImage?: string | null) {
   if (!mainImage || !mainImage.trim()) {
@@ -141,6 +164,16 @@ function normalizeImageUrl(mainImage?: string | null): string | null {
 
 export function AIChatModal() {
   const router = useRouter();
+  const { userId } = useAuth();
+
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [isOnboarding, setIsOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>(null);
+  const [isOnboardingTyping, setIsOnboardingTyping] = useState(false);
+  const [localMessages, setLocalMessages] = useState<
+    { id: string; role: "assistant" | "user"; content: string }[]
+  >([]);
 
   const [chatParams, setChatParams] = useQueryStates({
     chat_open: parseAsBoolean.withDefault(false),
@@ -163,12 +196,127 @@ export function AIChatModal() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialMessageSentRef = useRef(false);
+  const onboardingInitializedRef = useRef(false);
+
+  function getNextMissingStep(profileData: ProfileData | null): OnboardingStep {
+    if (!profileData?.name) return "name";
+    if (!profileData?.plan) return "plan";
+    if (profileData?.bedrooms == null) return "bedrooms";
+    if (profileData?.parkingSpots == null) return "parkingSpots";
+    if (profileData?.bathrooms == null) return "bathrooms";
+    if (!profileData?.neighborhood) return "neighborhood";
+    return null;
+  }
+
+  function getQuestionForStep(step: OnboardingStep) {
+    switch (step) {
+      case "name":
+        return "Antes de começarmos, qual é o seu nome?";
+      case "plan":
+        return "Qual é o seu plano? Exemplo: Plano Básico.";
+      case "bedrooms":
+        return "Quantos quartos você procura?";
+      case "parkingSpots":
+        return "Quantas vagas de garagem você precisa?";
+      case "bathrooms":
+        return "Quantos banheiros você precisa?";
+      case "neighborhood":
+        return "Qual bairro você prefere?";
+      default:
+        return "Vamos continuar.";
+    }
+  }
+
+  async function askNextOnboardingQuestion(step: OnboardingStep) {
+    if (!step) return;
+
+    setIsOnboardingTyping(true);
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    setIsOnboardingTyping(false);
+
+    setOnboardingStep(step);
+    setLocalMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: getQuestionForStep(step),
+      },
+    ]);
+  }
+
+  async function saveOnboardingField(step: OnboardingStep, value: string) {
+    if (!userId || !step) return null;
+
+    const payload: Record<string, unknown> = { userId };
+
+    if (step === "name") payload.name = value;
+    if (step === "plan") payload.plan = value;
+    if (step === "bedrooms") payload.bedrooms = Number(value);
+    if (step === "parkingSpots") payload.parkingSpots = Number(value);
+    if (step === "bathrooms") payload.bathrooms = Number(value);
+    if (step === "neighborhood") payload.neighborhood = value;
+
+    const res = await fetch(`${API_URL}/profile/onboarding`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      console.error("Erro ao salvar onboarding:", await res.text());
+      return null;
+    }
+
+    const updatedProfile = await res.json();
+    setProfile(updatedProfile);
+    return updatedProfile;
+  }
+
+  async function finishOnboarding() {
+    if (!userId) return;
+
+    const res = await fetch(`${API_URL}/profile/onboarding`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId,
+        onboardingDone: true,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("Erro ao finalizar onboarding:", await res.text());
+      return;
+    }
+
+    const updatedProfile = await res.json();
+    setProfile(updatedProfile);
+    setIsOnboarding(false);
+    setOnboardingStep(null);
+    setIsOnboardingTyping(false);
+
+    setLocalMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content:
+          "Perfeito! Salvei seu perfil. Agora posso te ajudar a encontrar imóveis com base nas suas preferências.",
+      },
+    ]);
+  }
 
   useEffect(() => {
     if (
       chatParams.chat_open &&
       chatParams.chat_initial_message &&
-      !initialMessageSentRef.current
+      !initialMessageSentRef.current &&
+      !isOnboarding
     ) {
       initialMessageSentRef.current = true;
       sendMessage({ text: chatParams.chat_initial_message });
@@ -179,15 +327,84 @@ export function AIChatModal() {
     chatParams.chat_initial_message,
     sendMessage,
     setChatParams,
+    isOnboarding,
   ]);
 
   useEffect(() => {
-    if (!chatParams.chat_open) initialMessageSentRef.current = false;
+    if (!chatParams.chat_open) {
+      initialMessageSentRef.current = false;
+      onboardingInitializedRef.current = false;
+      setLocalMessages([]);
+      setIsOnboarding(false);
+      setOnboardingStep(null);
+      setIsOnboardingTyping(false);
+      setLoadingProfile(true);
+    }
   }, [chatParams.chat_open]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, status]);
+  }, [messages, status, localMessages, isOnboardingTyping]);
+
+  useEffect(() => {
+    async function loadProfile() {
+      if (!userId || !chatParams.chat_open) return;
+      if (onboardingInitializedRef.current) return;
+
+      try {
+        setLoadingProfile(true);
+
+        const res = await fetch(`${API_URL}/profile/${userId}`);
+
+        if (!res.ok) {
+          console.error("Erro ao carregar perfil:", await res.text());
+          onboardingInitializedRef.current = true;
+          setProfile(null);
+          setIsOnboarding(true);
+          setLocalMessages([]);
+          await askNextOnboardingQuestion("name");
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!data) {
+          onboardingInitializedRef.current = true;
+          setProfile(null);
+          setIsOnboarding(true);
+          setLocalMessages([]);
+          await askNextOnboardingQuestion("name");
+          return;
+        }
+
+        setProfile(data);
+
+        const nextStep = getNextMissingStep(data);
+
+        if (!data.onboardingDone && nextStep) {
+          onboardingInitializedRef.current = true;
+          setIsOnboarding(true);
+          setLocalMessages([]);
+          await askNextOnboardingQuestion(nextStep);
+        } else {
+          onboardingInitializedRef.current = true;
+          setIsOnboarding(false);
+          setOnboardingStep(null);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar perfil:", error);
+        onboardingInitializedRef.current = true;
+        setProfile(null);
+        setIsOnboarding(true);
+        setLocalMessages([]);
+        await askNextOnboardingQuestion("name");
+      } finally {
+        setLoadingProfile(false);
+      }
+    }
+
+    loadProfile();
+  }, [userId, chatParams.chat_open]);
 
   if (!chatParams.chat_open) return null;
 
@@ -195,12 +412,86 @@ export function AIChatModal() {
     setChatParams({ chat_open: false, chat_initial_message: null });
   };
 
-  const onSubmit = (values: ChatFormValues) => {
-    sendMessage({ text: values.message });
+  const onSubmit = async (values: ChatFormValues) => {
+    const text = values.message.trim();
+    if (!text) return;
+
     form.reset();
+
+    if (isOnboarding && onboardingStep) {
+      setLocalMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "user",
+          content: text,
+        },
+      ]);
+
+      const updatedProfile = await saveOnboardingField(onboardingStep, text);
+
+      if (!updatedProfile) {
+        setLocalMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: "Não consegui salvar sua resposta agora. Tente novamente.",
+          },
+        ]);
+        return;
+      }
+
+      const nextStep = getNextMissingStep(updatedProfile);
+
+      if (nextStep) {
+        await askNextOnboardingQuestion(nextStep);
+      } else {
+        await finishOnboarding();
+      }
+
+      return;
+    }
+
+    sendMessage({ text });
   };
 
-  const handleSuggestion = (text: string) => {
+  const handleSuggestion = async (text: string) => {
+    if (isOnboarding && onboardingStep) {
+      setLocalMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "user",
+          content: text,
+        },
+      ]);
+
+      const updatedProfile = await saveOnboardingField(onboardingStep, text);
+
+      if (!updatedProfile) {
+        setLocalMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: "Não consegui salvar sua resposta agora. Tente novamente.",
+          },
+        ]);
+        return;
+      }
+
+      const nextStep = getNextMissingStep(updatedProfile);
+
+      if (nextStep) {
+        await askNextOnboardingQuestion(nextStep);
+      } else {
+        await finishOnboarding();
+      }
+
+      return;
+    }
+
     sendMessage({ text });
   };
 
@@ -238,11 +529,43 @@ export function AIChatModal() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50/50">
-        {messages.length === 0 && (
-          <ChatBubble
-            role="assistant"
-            content="Olá! Sou sua IA personal da Casa São José. O que você está buscando hoje?"
-          />
+        {loadingProfile && (
+          <ChatBubble role="assistant">Carregando seu perfil...</ChatBubble>
+        )}
+
+        {messages.length === 0 &&
+          localMessages.length === 0 &&
+          !isOnboarding &&
+          !loadingProfile && (
+            <ChatBubble
+              role="assistant"
+              content="Olá! Sou sua IA personal da Casa São José. O que você está buscando hoje?"
+            />
+          )}
+
+        {localMessages.map((message) => (
+          <div key={message.id} className="flex flex-col">
+            <ChatBubble role={message.role}>{message.content}</ChatBubble>
+          </div>
+        ))}
+
+        {isOnboardingTyping && (
+          <div className="flex justify-start mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-[#eeeeee] p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1.5 h-12">
+              <div
+                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: "0ms" }}
+              />
+              <div
+                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: "150ms" }}
+              />
+              <div
+                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                style={{ animationDelay: "300ms" }}
+              />
+            </div>
+          </div>
         )}
 
         {messages.map((message) => {
@@ -258,6 +581,7 @@ export function AIChatModal() {
                   {textContent}
                 </ChatBubble>
               )}
+
               {message.parts?.map((part: any, index: number) => {
                 if (part.type === "tool-buscarImoveis") {
                   if (
@@ -291,7 +615,6 @@ export function AIChatModal() {
                         <div
                           key={`result-${index}`}
                           className="flex flex-col gap-3 w-full mb-4">
-                          {/* 👇 Mudamos de carrossel para uma lista vertical limpa 👇 */}
                           <div className="flex flex-col gap-3 w-full pl-2 pr-2">
                             {properties.map((prop: any) => {
                               const validImageUrl = normalizeImageUrl(
@@ -301,7 +624,7 @@ export function AIChatModal() {
                               const imovelFormatado = {
                                 id: prop.id,
                                 title: prop.title,
-                                propertyType: "Imóvel", // IA não traz o tipo por padrão
+                                propertyType: "Imóvel",
                                 mainImage: validImageUrl || "",
                                 price: prop.price || 0,
                               };
@@ -369,7 +692,7 @@ export function AIChatModal() {
       </div>
 
       <div className="flex shrink-0 flex-col gap-3 p-4 border-t border-gray-100 bg-white z-10">
-        {!isLoading && messages.length < 3 && (
+        {!isLoading && !isOnboarding && messages.length < 3 && (
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
             {SUGGESTED_MESSAGES.map((suggestion) => (
               <button
@@ -405,7 +728,11 @@ export function AIChatModal() {
             />
             <button
               type="submit"
-              disabled={!form.watch("message")?.trim() || isLoading}
+              disabled={
+                !form.watch("message")?.trim() ||
+                isLoading ||
+                isOnboardingTyping
+              }
               className="bg-[#00c1ac] text-white p-3 rounded-full shadow-lg shadow-[#00c1ac]/30 disabled:opacity-50 disabled:shadow-none hover:scale-105 active:scale-95 transition-all cursor-pointer flex-shrink-0">
               <ArrowUp size={22} />
             </button>
