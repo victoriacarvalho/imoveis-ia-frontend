@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQueryStates, parseAsBoolean } from "nuqs";
-import { Home, Building2, BarChart3, User, Sparkles } from "lucide-react";
+import {
+  Home,
+  Building2,
+  BarChart3,
+  User,
+  Sparkles,
+  Heart,
+} from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -27,7 +34,6 @@ export function BottomNav() {
         <Building2 className="size-7" />
       </Link>
 
-      {/* BOTÃO CENTRAL: Agora abre seu Chat via URL */}
       <div className="relative -top-6">
         <button
           onClick={() => setChatParams({ chat_open: true })}
@@ -36,8 +42,8 @@ export function BottomNav() {
         </button>
       </div>
 
-      <Link href="/estatisticas" className={getIconColor("/estatisticas")}>
-        <BarChart3 className="size-7" />
+      <Link href="/favoritos" className={getIconColor("/favoritos")}>
+        <Heart className="size-7" />
       </Link>
 
       <Link href="/perfil" className={getIconColor("/perfil")}>

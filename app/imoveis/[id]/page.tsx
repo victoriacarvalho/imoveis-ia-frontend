@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import {
   ChevronLeft,
   MapPin,
@@ -57,30 +58,35 @@ interface PropertyDetails {
   gallery: string[];
 }
 
+const API_URL = "http://localhost:8081";
+
 export default function ImovelDetalhesPage() {
   const router = useRouter();
-  const params = useParams(); // Pega o ID da URL
+  const params = useParams();
+  const { userId } = useAuth();
 
   const [imovel, setImovel] = useState<PropertyDetails | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [fotoAtiva, setFotoAtiva] = useState<string>("");
+  const [isFavorito, setIsFavorito] = useState(false);
+  const [carregandoFavorito, setCarregandoFavorito] = useState(false);
 
   useEffect(() => {
-    // Garante que temos o ID antes de buscar
     if (!params.id) return;
 
-    fetch(`http://localhost:8081/imoveis/${params.id}`)
+    fetch(`${API_URL}/imoveis/${params.id}`)
       .then((res) => {
         if (!res.ok) throw new Error("Imóvel não encontrado");
         return res.json();
       })
       .then((data) => {
         setImovel(data);
-        // Define a foto principal como a primeira a ser exibida
+
         const primeiraFoto =
           data.mainImage && data.mainImage.length > 5
             ? data.mainImage
             : "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=600&auto=format&fit=crop";
+
         setFotoAtiva(primeiraFoto);
         setCarregando(false);
       })
@@ -89,6 +95,55 @@ export default function ImovelDetalhesPage() {
         setCarregando(false);
       });
   }, [params.id]);
+
+  useEffect(() => {
+    async function carregarFavorito() {
+      if (!userId || !params.id) return;
+
+      try {
+        const res = await fetch(
+          `${API_URL}/favorites/check?userId=${userId}&propertyId=${params.id}`,
+        );
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setIsFavorito(Boolean(data.isFavorite));
+      } catch (error) {
+        console.error("Erro ao carregar favorito:", error);
+      }
+    }
+
+    carregarFavorito();
+  }, [userId, params.id]);
+
+  async function toggleFavorito() {
+    if (!userId || !imovel?.id || carregandoFavorito) return;
+
+    try {
+      setCarregandoFavorito(true);
+
+      const res = await fetch(`${API_URL}/favorites/toggle`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId,
+          propertyId: imovel.id,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao atualizar favorito");
+
+      const data = await res.json();
+      setIsFavorito(Boolean(data.isFavorite));
+    } catch (error) {
+      console.error("Erro ao favoritar:", error);
+    } finally {
+      setCarregandoFavorito(false);
+    }
+  }
 
   if (carregando) {
     return (
@@ -118,7 +173,6 @@ export default function ImovelDetalhesPage() {
     );
   }
 
-  // Prepara a galeria de fotos (mistura a principal com as outras, se houver)
   const galeriaCompleta =
     imovel.gallery && imovel.gallery.length > 0
       ? [
@@ -126,29 +180,38 @@ export default function ImovelDetalhesPage() {
           ...imovel.gallery.filter((img) => img !== imovel.mainImage),
         ]
       : [fotoAtiva];
+
   const dadosCorrigidos = extrairDadosDaDescricao(imovel.description, imovel);
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-white relative pb-32 font-sans shadow-2xl">
-      {/* 1. HEADER & FOTO PRINCIPAL */}
       <div className="relative h-80 bg-gray-900 w-full">
-        {/* Botões flutuantes no topo */}
         <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20">
           <button
             onClick={() => router.back()}
             className="bg-white/20 backdrop-blur-md text-white p-2 rounded-full hover:bg-white/30 transition">
             <ChevronLeft size={24} />
           </button>
+
           <div className="flex gap-3">
             <button className="bg-white/20 backdrop-blur-md text-white p-2 rounded-full hover:bg-white/30 transition">
               <Share2 size={20} />
             </button>
-            <button className="bg-white/20 backdrop-blur-md text-white p-2 rounded-full hover:bg-white/30 transition">
-              <Heart size={20} />
+
+            <button
+              onClick={toggleFavorito}
+              disabled={!userId || carregandoFavorito}
+              className="bg-white/20 backdrop-blur-md text-white p-2 rounded-full hover:bg-white/30 transition disabled:opacity-60">
+              <Heart
+                size={20}
+                className={
+                  isFavorito ? "fill-red-500 text-red-500" : "text-white"
+                }
+              />
             </button>
           </div>
         </div>
 
-        {/* Imagem em destaque */}
         <img
           src={fotoAtiva}
           alt={imovel.title}
@@ -160,15 +223,12 @@ export default function ImovelDetalhesPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
 
-        {/* Badge Flutuante */}
         <div className="absolute bottom-10 left-6 bg-teal-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg uppercase tracking-wide shadow-lg">
           {imovel.transactionType === "VENDA" ? "À Venda" : "Para Alugar"}
         </div>
       </div>
 
-      {/* 2. CONTEÚDO DO IMÓVEL (Card que sobrepõe a foto) */}
       <div className="relative -mt-6 bg-white rounded-t-[2rem] px-6 pt-8 pb-6 z-10 flex flex-col gap-6">
-        {/* Título e Preço */}
         <div>
           <div className="flex justify-between items-start mb-2">
             <h1 className="text-2xl font-extrabold text-gray-900 leading-tight flex-1 pr-4">
@@ -184,7 +244,6 @@ export default function ImovelDetalhesPage() {
           </p>
         </div>
 
-        {/* Características (Quartos, Banheiros, Vagas) */}
         <div className="flex gap-4 overflow-x-auto hide-scrollbar py-2">
           <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 px-4 py-3 rounded-2xl flex-shrink-0">
             <div className="bg-white p-2 rounded-full shadow-sm text-teal-500">
@@ -229,7 +288,6 @@ export default function ImovelDetalhesPage() {
           </div>
         </div>
 
-        {/* Mini Galeria de Fotos */}
         {galeriaCompleta.length > 1 && (
           <div>
             <h3 className="text-lg font-bold text-gray-900 mb-3">Galeria</h3>
@@ -238,7 +296,11 @@ export default function ImovelDetalhesPage() {
                 <button
                   key={index}
                   onClick={() => setFotoAtiva(foto)}
-                  className={`relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 snap-center border-2 transition-all ${fotoAtiva === foto ? "border-teal-500 opacity-100" : "border-transparent opacity-60 hover:opacity-100"}`}>
+                  className={`relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 snap-center border-2 transition-all ${
+                    fotoAtiva === foto
+                      ? "border-teal-500 opacity-100"
+                      : "border-transparent opacity-60 hover:opacity-100"
+                  }`}>
                   <img
                     src={foto}
                     alt={`Foto ${index}`}
@@ -250,7 +312,6 @@ export default function ImovelDetalhesPage() {
           </div>
         )}
 
-        {/* Descrição do Imóvel */}
         <div>
           <h3 className="text-lg font-bold text-gray-900 mb-3">
             Sobre o imóvel
@@ -261,7 +322,6 @@ export default function ImovelDetalhesPage() {
         </div>
       </div>
 
-      {/* 3. CTA FIXO NA BASE (Call to Action) */}
       <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-100 p-4 pb-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50 flex gap-4 items-center">
         <div className="flex-1">
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">
@@ -277,7 +337,6 @@ export default function ImovelDetalhesPage() {
         </button>
       </div>
 
-      {/* Oculta scrollbar da galeria */}
       <style jsx global>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
