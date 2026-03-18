@@ -13,7 +13,34 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-// Tipagem completa baseada no seu Prisma Schema
+function extrairDadosDaDescricao(descricao: string, imovel: PropertyDetails) {
+  let quartos = imovel.bedrooms || 0;
+  let banheiros = imovel.bathrooms || 0;
+  let vagas = imovel.parkingSpots || 0;
+  let descLimpa = descricao || "";
+
+  if (descricao) {
+    const quartoMatch = descricao.match(
+      /(\d+)\s*(?:Quartos?|Quarto|dormitórios?|dormitório|qto|qtos)/i,
+    );
+    if (quartoMatch && quartos === 0) quartos = parseInt(quartoMatch[1]);
+
+    const banhMatch = descricao.match(/(\d+)\s*(?:banheiros?|wc|suítes?)/i);
+    if (banhMatch && banheiros === 0) banheiros = parseInt(banhMatch[1]);
+    else if (descricao.toLowerCase().includes("suíte") && banheiros === 0)
+      banheiros = 1;
+
+    const vagaMatch = descricao.match(/(\d+)\s*(?:vagas?|garagens?|garagem)/i);
+    if (vagaMatch && vagas === 0) vagas = parseInt(vagaMatch[1]);
+
+    descLimpa = descLimpa
+      .replace(/Condom[íi]nio:\s*R\$\s*0(?:[.,]00)?/gi, "")
+      .trim();
+  }
+
+  return { quartos, banheiros, vagas, descLimpa };
+}
+
 interface PropertyDetails {
   id: string;
   title: string;
@@ -99,7 +126,7 @@ export default function ImovelDetalhesPage() {
           ...imovel.gallery.filter((img) => img !== imovel.mainImage),
         ]
       : [fotoAtiva];
-
+  const dadosCorrigidos = extrairDadosDaDescricao(imovel.description, imovel);
   return (
     <div className="max-w-md mx-auto min-h-screen bg-white relative pb-32 font-sans shadow-2xl">
       {/* 1. HEADER & FOTO PRINCIPAL */}
@@ -168,7 +195,7 @@ export default function ImovelDetalhesPage() {
                 Quartos
               </p>
               <p className="font-extrabold text-gray-900">
-                {imovel.bedrooms || 0}
+                {dadosCorrigidos.quartos}
               </p>
             </div>
           </div>
@@ -182,7 +209,7 @@ export default function ImovelDetalhesPage() {
                 Banheiros
               </p>
               <p className="font-extrabold text-gray-900">
-                {imovel.bathrooms || 0}
+                {dadosCorrigidos.banheiros}
               </p>
             </div>
           </div>
@@ -196,7 +223,7 @@ export default function ImovelDetalhesPage() {
                 Vagas
               </p>
               <p className="font-extrabold text-gray-900">
-                {imovel.parkingSpots || 0}
+                {dadosCorrigidos.vagas}
               </p>
             </div>
           </div>
@@ -229,7 +256,7 @@ export default function ImovelDetalhesPage() {
             Sobre o imóvel
           </h3>
           <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
-            {imovel.description || "Descrição não disponível para este imóvel."}
+            {dadosCorrigidos.descLimpa}
           </p>
         </div>
       </div>

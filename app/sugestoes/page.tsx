@@ -10,10 +10,9 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { BottomNav } from "../_components/bottom-nav";
 
-// 👇 IMPORTANTE: Importe o seu novo componente aqui. Ajuste o caminho conforme a sua pasta!
+import { useRouter, useSearchParams } from "next/navigation";
 import { ImovelListCard } from "../_components/imovel-list-card";
 
 interface Property {
@@ -29,27 +28,47 @@ interface Property {
 
 export default function SugestoesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // 🚀 Lendo TODOS os parâmetros da URL
+  const idsNaUrl = searchParams.get("ids");
+  const transactionType = searchParams.get("transactionType");
+  const propertyType = searchParams.get("propertyType");
+
   const [imoveis, setImoveis] = useState<Property[]>([]);
   const [carregando, setCarregando] = useState(true);
-
   const [bairroExpandido, setBairroExpandido] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8081/imoveis?take=50")
+    const params = new URLSearchParams();
+    params.append("take", "50");
+    if (transactionType) params.append("transactionType", transactionType);
+    if (propertyType) params.append("propertyType", propertyType);
+
+    fetch(`http://localhost:8081/imoveis?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.imoveis) setImoveis(data.imoveis);
+        let listaFinal = data.imoveis || [];
+
+        if (idsNaUrl) {
+          const arrayDeIds = idsNaUrl.split(",");
+          listaFinal = listaFinal.filter((imovel: Property) =>
+            arrayDeIds.includes(imovel.id),
+          );
+        }
+
+        setImoveis(listaFinal);
         setCarregando(false);
       })
       .catch((err) => {
         console.error("Erro ao carregar imóveis", err);
         setCarregando(false);
       });
-  }, []);
+  }, [idsNaUrl, transactionType, propertyType]);
 
   const imoveisPorBairro = imoveis.reduce(
     (acc, imovel) => {
-      let bairroRaw = imovel.neighborhood || "Outros";
+      const bairroRaw = imovel.neighborhood || "Outros";
       let bairroLimpo = bairroRaw.replace(/^B\.\s*|^Bairro\s*/i, "").trim();
       bairroLimpo =
         bairroLimpo.charAt(0).toUpperCase() +
@@ -70,7 +89,6 @@ export default function SugestoesPage() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-white relative pb-32 font-sans shadow-2xl">
-      {/* HEADER TIPO APP */}
       <header className="flex items-center justify-between p-6 bg-white sticky top-0 z-20">
         <button
           onClick={() => router.back()}
@@ -122,7 +140,6 @@ export default function SugestoesPage() {
           </Link>
         )}
 
-        {/* LISTA DE BAIRROS UNIFICADOS */}
         {carregando ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -141,7 +158,6 @@ export default function SugestoesPage() {
                   <div
                     key={bairro}
                     className="border border-gray-100 rounded-3xl shadow-[0_2px_15px_rgba(0,0,0,0.03)] bg-white overflow-hidden transition-all duration-300">
-                    {/* BOTÃO QUE ABRE O ACORDEÃO DO BAIRRO */}
                     <button
                       onClick={() =>
                         setBairroExpandido(estaAberto ? null : bairro)
@@ -164,11 +180,9 @@ export default function SugestoesPage() {
                       </div>
                     </button>
 
-                    {/* CONTEÚDO EXPANDIDO */}
                     {estaAberto && (
                       <div className="bg-gray-50/50 p-4 border-t border-gray-50 flex flex-col gap-3">
                         {listaDeImoveis.map((imovel) => (
-                          // 👇 OLHA COMO FICOU LIMPO AQUI 👇
                           <ImovelListCard key={imovel.id} imovel={imovel} />
                         ))}
                       </div>
@@ -179,10 +193,6 @@ export default function SugestoesPage() {
             )}
           </div>
         )}
-
-        <button className="w-full border-2 border-gray-100 bg-white text-gray-900 font-bold py-4 rounded-full mt-6 hover:bg-gray-50 transition shadow-sm text-sm">
-          Marcar como concluído
-        </button>
       </main>
 
       <BottomNav />
