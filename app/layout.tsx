@@ -7,9 +7,10 @@ import { AIChatModal } from "./_components/chat/AIChatModal";
 import { useState } from "react";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { ClerkProvider } from "@clerk/nextjs";
+import { ptBR } from "@clerk/localizations";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
-
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export default function RootLayout({
   children,
@@ -21,17 +22,28 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={cn("font-sans", geist.variable)}>
       <body>
-        <NuqsAdapter>
-          <div className="flex min-h-screen bg-gray-50 text-foreground">
-            <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <ClerkProvider
+          localization={{
+            ...ptBR,
+            signIn: {
+              start: {
+                title: "Bem-vindo à Imóveis.AI",
+                subtitle: "Acesse sua conta para continuar",
+              },
+            },
+          }}>
+          <NuqsAdapter>
+            <div className="flex min-h-screen bg-gray-50 text-foreground">
+              <main className="flex-1 pb-20 md:pb-0">{children}</main>
 
-            <BottomNav />
-            <AIChatModal
-              isOpen={isChatOpen}
-              onClose={() => setIsChatOpen(false)}
-            />
-          </div>
-        </NuqsAdapter>
+              <BottomNav />
+              <AIChatModal
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+              />
+            </div>
+          </NuqsAdapter>
+        </ClerkProvider>
       </body>
     </html>
   );
