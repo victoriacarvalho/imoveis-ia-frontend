@@ -30,7 +30,7 @@ interface ChatMessage {
   timestamp: string;
 }
 
-const API_URL = "http://localhost:8081";
+const API_URL = "https://imoveis-ia-api.onrender.com";
 
 function extrairNumerosTelefone(valor: string) {
   return valor.replace(/\D/g, "");

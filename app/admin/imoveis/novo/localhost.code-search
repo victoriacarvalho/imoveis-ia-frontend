@@ -1,0 +1,39 @@
+# Query: localhost
+
+12 resultados - 12 arquivos
+
+app/admin/imoveis/page.tsx:
+  11: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/admin/imoveis/[id]/editar/page.tsx:
+  11: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/admin/imoveis/novo/page.tsx:
+  9: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/admin/interesses/page.tsx:
+  10: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/admin/interesses/[id]/page.tsx:
+  7: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/admin/mensagens/page.tsx:
+  16: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/contato/[id]/page.tsx:
+  33: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/favoritos/page.tsx:
+  22: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/imoveis/ImoveisPageClient.tsx:
+  8: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/imoveis/[id]/page.tsx:
+  34: const API_URL = "https://imoveis-ia-api.onrender.com";
+
+app/perfil/page.tsx:
+  124:         const res = await fetch(`https://imoveis-ia-api.onrender.com`);
+
+app/sugestoes/SugestoesPageClient.tsx:
+  47:     fetch(`https://imoveis-ia-api.onrender.com/`)

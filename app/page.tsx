@@ -40,7 +40,7 @@ export default function AppHome() {
 
     params.append("take", "10");
 
-    fetch(`http://localhost:8081/imoveis?${params.toString()}`)
+    fetch(`https://imoveis-ia-api.onrender.com`)
       .then((res) => res.json())
       .then((data) => {
         if (data.imoveis) {

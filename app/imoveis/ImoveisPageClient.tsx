@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-const API_URL = "http://localhost:8081";
+const API_URL = "http://:8081";
 
 interface Property {
   id: string;

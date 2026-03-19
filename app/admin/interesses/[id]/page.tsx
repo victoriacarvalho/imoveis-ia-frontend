@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Loader2 } from "lucide-react";
 
-const API_URL = "http://localhost:8081";
+const API_URL = "https://imoveis-ia-api.onrender.com";
 
 interface PropertyInfo {
   id: string;

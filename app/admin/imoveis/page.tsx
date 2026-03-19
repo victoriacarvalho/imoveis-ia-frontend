@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { AdminNav } from "../../_components/admin-bottom-nav";
 
-const API_URL = "http://localhost:8081";
+const API_URL = "https://imoveis-ia-api.onrender.com";
 
 interface Property {
   id: string;

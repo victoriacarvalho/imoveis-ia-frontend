@@ -121,7 +121,7 @@ export default function PerfilPage() {
       if (!userId) return;
 
       try {
-        const res = await fetch(`http://localhost:8081/profile/${userId}`);
+        const res = await fetch(`https://imoveis-ia-api.onrender.com/profile/${userId}`);
         const data = await res.json();
         setProfile(data);
       } catch (error) {

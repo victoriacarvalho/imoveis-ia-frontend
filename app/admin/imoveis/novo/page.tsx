@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Loader2, Plus, X } from "lucide-react";
 
-const API_URL = "http://localhost:8081";
+const API_URL = "https://imoveis-ia-api.onrender.com";
 
 interface FormDataState {
   status: string | number | readonly string[] | undefined;

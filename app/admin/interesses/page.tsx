@@ -7,7 +7,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { AdminNav } from "../../_components/admin-bottom-nav";
 
-const API_URL = "http://localhost:8081";
+const API_URL = "https://imoveis-ia-api.onrender.com";
 
 interface AdminPropertyLeadStats {
   id: string;

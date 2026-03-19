@@ -117,7 +117,7 @@ type ChatMessage = {
   parts?: MessagePart[];
 };
 
-const API_URL = "http://localhost:8081";
+const API_URL = "https://imoveis-ia-api.onrender.com";
 
 function normalizeImageUrl(mainImage?: string | null): string | null {
   if (!mainImage || !mainImage.trim()) return null;
@@ -167,7 +167,7 @@ export function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
-      api: "http://localhost:8081/ai/chat",
+      api: "https://imoveis-ia-api.onrender.com",
     }),
   });
 
