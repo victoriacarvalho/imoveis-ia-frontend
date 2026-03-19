@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 type PropertyCardProps = {
   image?: string | null;
   rawImage?: string | null;

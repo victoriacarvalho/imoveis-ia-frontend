@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import {
   ChevronLeft,
   MapPin,
@@ -12,35 +12,8 @@ import {
   Share2,
   Heart,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
-
-function extrairDadosDaDescricao(descricao: string, imovel: PropertyDetails) {
-  let quartos = imovel.bedrooms || 0;
-  let banheiros = imovel.bathrooms || 0;
-  let vagas = imovel.parkingSpots || 0;
-  let descLimpa = descricao || "";
-
-  if (descricao) {
-    const quartoMatch = descricao.match(
-      /(\d+)\s*(?:Quartos?|Quarto|dormitórios?|dormitório|qto|qtos)/i,
-    );
-    if (quartoMatch && quartos === 0) quartos = parseInt(quartoMatch[1]);
-
-    const banhMatch = descricao.match(/(\d+)\s*(?:banheiros?|wc|suítes?)/i);
-    if (banhMatch && banheiros === 0) banheiros = parseInt(banhMatch[1]);
-    else if (descricao.toLowerCase().includes("suíte") && banheiros === 0)
-      banheiros = 1;
-
-    const vagaMatch = descricao.match(/(\d+)\s*(?:vagas?|garagens?|garagem)/i);
-    if (vagaMatch && vagas === 0) vagas = parseInt(vagaMatch[1]);
-
-    descLimpa = descLimpa
-      .replace(/Condom[íi]nio:\s*R\$\s*0(?:[.,]00)?/gi, "")
-      .trim();
-  }
-
-  return { quartos, banheiros, vagas, descLimpa };
-}
 
 interface PropertyDetails {
   id: string;
@@ -60,16 +33,48 @@ interface PropertyDetails {
 
 const API_URL = "http://localhost:8081";
 
+function extrairDadosDaDescricao(descricao: string, imovel: PropertyDetails) {
+  let quartos = imovel.bedrooms || 0;
+  let banheiros = imovel.bathrooms || 0;
+  let vagas = imovel.parkingSpots || 0;
+  let descLimpa = descricao || "";
+
+  if (descricao) {
+    const quartoMatch = descricao.match(
+      /(\d+)\s*(?:Quartos?|Quarto|dormitórios?|dormitório|qto|qtos)/i,
+    );
+    if (quartoMatch && quartos === 0) quartos = parseInt(quartoMatch[1], 10);
+
+    const banhMatch = descricao.match(/(\d+)\s*(?:banheiros?|wc|suítes?)/i);
+    if (banhMatch && banheiros === 0) {
+      banheiros = parseInt(banhMatch[1], 10);
+    } else if (descricao.toLowerCase().includes("suíte") && banheiros === 0) {
+      banheiros = 1;
+    }
+
+    const vagaMatch = descricao.match(/(\d+)\s*(?:vagas?|garagens?|garagem)/i);
+    if (vagaMatch && vagas === 0) vagas = parseInt(vagaMatch[1], 10);
+
+    descLimpa = descLimpa
+      .replace(/Condom[íi]nio:\s*R\$\s*0(?:[.,]00)?/gi, "")
+      .trim();
+  }
+
+  return { quartos, banheiros, vagas, descLimpa };
+}
+
 export default function ImovelDetalhesPage() {
   const router = useRouter();
   const params = useParams();
   const { userId } = useAuth();
+  const { user } = useUser();
 
   const [imovel, setImovel] = useState<PropertyDetails | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [fotoAtiva, setFotoAtiva] = useState<string>("");
+  const [fotoAtiva, setFotoAtiva] = useState("");
   const [isFavorito, setIsFavorito] = useState(false);
   const [carregandoFavorito, setCarregandoFavorito] = useState(false);
+  const [redirecionandoContato, setRedirecionandoContato] = useState(false);
 
   useEffect(() => {
     if (!params.id) return;
@@ -79,7 +84,7 @@ export default function ImovelDetalhesPage() {
         if (!res.ok) throw new Error("Imóvel não encontrado");
         return res.json();
       })
-      .then((data) => {
+      .then((data: PropertyDetails) => {
         setImovel(data);
 
         const primeiraFoto =
@@ -145,6 +150,48 @@ export default function ImovelDetalhesPage() {
     }
   }
 
+  async function handleTenhoInteresse() {
+    if (!imovel?.id || !userId || redirecionandoContato) return;
+
+    try {
+      setRedirecionandoContato(true);
+
+      const nome =
+        user?.fullName?.trim() ||
+        [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+        user?.username?.trim() ||
+        user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+        undefined;
+
+      const email = user?.primaryEmailAddress?.emailAddress || undefined;
+
+      const response = await fetch(`${API_URL}/lead-events`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId,
+          userName: nome,
+          userEmail: email,
+          propertyId: imovel.id,
+          eventType: "interest_click",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao registrar interesse");
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 900));
+
+      router.push(`/contato/${imovel.id}`);
+    } catch (error) {
+      console.error("Erro ao registrar interesse:", error);
+      setRedirecionandoContato(false);
+    }
+  }
+
   if (carregando) {
     return (
       <div className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col items-center justify-center animate-pulse">
@@ -184,7 +231,7 @@ export default function ImovelDetalhesPage() {
   const dadosCorrigidos = extrairDadosDaDescricao(imovel.description, imovel);
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white relative pb-32 font-sans shadow-2xl">
+    <div className="max-w-md mx-auto min-h-screen bg-white relative pb-[220px] font-sans shadow-2xl">
       <div className="relative h-80 bg-gray-900 w-full">
         <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20">
           <button
@@ -322,7 +369,7 @@ export default function ImovelDetalhesPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-100 p-4 pb-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50 flex gap-4 items-center">
+      <div className="fixed bottom-20 left-1/2 w-full max-w-md -translate-x-1/2 bg-white border-t border-gray-100 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-40 flex gap-4 items-center">
         <div className="flex-1">
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">
             Valor Total
@@ -331,11 +378,43 @@ export default function ImovelDetalhesPage() {
             R$ {Number(imovel.price).toLocaleString("pt-BR")}
           </p>
         </div>
-        <button className="bg-gray-900 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:bg-gray-800 transition flex items-center gap-2">
-          <CheckCircle2 size={20} />
-          Tenho Interesse
+
+        <button
+          onClick={handleTenhoInteresse}
+          disabled={!userId || redirecionandoContato}
+          className="bg-gray-900 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:bg-gray-800 transition flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+          {redirecionandoContato ? (
+            <>
+              <Loader2 size={20} className="animate-spin" />
+              Redirecionando...
+            </>
+          ) : (
+            <>
+              <CheckCircle2 size={20} />
+              Tenho Interesse
+            </>
+          )}
         </button>
       </div>
+
+      {redirecionandoContato && (
+        <div className="fixed inset-0 z-[999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white rounded-3xl px-8 py-7 shadow-2xl flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center">
+              <Loader2 className="size-8 text-teal-500 animate-spin" />
+            </div>
+
+            <div className="text-center">
+              <p className="text-lg font-extrabold text-gray-900">
+                Redirecionando...
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Estamos preparando seu contato com a imobiliária
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         .hide-scrollbar::-webkit-scrollbar {

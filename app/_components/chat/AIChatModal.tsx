@@ -30,6 +30,11 @@ const chatFormSchema = z.object({
   message: z.string().min(1),
 });
 
+interface AIChatModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
 type ChatFormValues = z.infer<typeof chatFormSchema>;
 
 type ProfileData = {
@@ -40,6 +45,9 @@ type ProfileData = {
   parkingSpots: number | null;
   bathrooms: number | null;
   neighborhood: string | null;
+  transactionType: string | null;
+  propertyType: string | null;
+  maxPrice: number | null;
   onboardingDone: boolean;
 };
 
@@ -52,85 +60,64 @@ type OnboardingStep =
   | "neighborhood"
   | null;
 
+type LocalMessage = {
+  id: string;
+  role: "assistant" | "user";
+  content: string;
+};
+
+type PropertyResult = {
+  id: string;
+  title: string;
+  mainImage?: string | null;
+  price?: number | null;
+};
+
+type ProfilePreferenceOutput = Partial<{
+  plan: string | null;
+  bedrooms: number | null;
+  parkingSpots: number | null;
+  bathrooms: number | null;
+  neighborhood: string | null;
+  transactionType: string | null;
+  propertyType: string | null;
+  maxPrice: number | null;
+}>;
+
+type TextPart = {
+  type: "text";
+  text: string;
+};
+
+type BuscarImoveisPart = {
+  type: "tool-buscarImoveis";
+  state:
+    | "input-streaming"
+    | "input-available"
+    | "output-error"
+    | "output-available";
+  output?: PropertyResult[];
+};
+
+type AtualizarPerfilPart = {
+  type: "tool-atualizarPerfilPreferencias";
+  state:
+    | "input-streaming"
+    | "input-available"
+    | "output-error"
+    | "output-available";
+  output?: ProfilePreferenceOutput;
+};
+
+type MessagePart = TextPart | BuscarImoveisPart | AtualizarPerfilPart;
+
+type ChatMessage = {
+  id: string;
+  role: "assistant" | "user";
+  parts?: MessagePart[];
+};
+
 const API_URL = "http://localhost:8081";
-
-function buildPropertyImageUrl(mainImage?: string | null) {
-  if (!mainImage || !mainImage.trim()) {
-    return {
-      valid: false,
-      url: "",
-      reason: "Imagem vazia",
-    };
-  }
-
-  const cleaned = mainImage
-    .trim()
-    .replace(/\.\.+/g, ".")
-    .replace(/^\/+/, "")
-    .replace(/\s+/g, "");
-
-  if (!cleaned || cleaned === ".jpg") {
-    return {
-      valid: false,
-      url: "",
-      reason: "Nome de imagem inválido",
-    };
-  }
-
-  if (cleaned.includes("/imoveis/imoveis/")) {
-    return {
-      valid: false,
-      url: cleaned,
-      reason: "Caminho duplicado",
-    };
-  }
-
-  if (cleaned.startsWith("http://") || cleaned.startsWith("https://")) {
-    try {
-      const parsed = new URL(cleaned);
-
-      const invalidPatterns = ["/.jpg", "..jpg", "/imoveis/imoveis/"];
-
-      const hasInvalidPattern = invalidPatterns.some((pattern) =>
-        parsed.href.includes(pattern),
-      );
-
-      return {
-        valid: !hasInvalidPattern,
-        url: parsed.href,
-        reason: hasInvalidPattern ? "URL remota inválida" : "",
-      };
-    } catch {
-      return {
-        valid: false,
-        url: cleaned,
-        reason: "URL remota malformada",
-      };
-    }
-  }
-
-  if (cleaned.startsWith("imoveis/")) {
-    return {
-      valid: false,
-      url: `https://imobiliariasaojose.com.br/${cleaned}`,
-      reason: "Caminho parcial suspeito",
-    };
-  }
-
-  const finalUrl = `https://imobiliariasaojose.com.br/imoveis/${cleaned}`;
-
-  const invalidPatterns = ["/.jpg", "..jpg", "/imoveis/imoveis/"];
-
-  const hasInvalidPattern = invalidPatterns.some((pattern) =>
-    finalUrl.includes(pattern),
-  );
-
-  return {
-    valid: !hasInvalidPattern,
-    url: finalUrl,
-    reason: hasInvalidPattern ? "URL final inválida" : "",
-  };
-}
 
 function normalizeImageUrl(mainImage?: string | null): string | null {
   if (!mainImage || !mainImage.trim()) return null;
@@ -162,18 +149,16 @@ function normalizeImageUrl(mainImage?: string | null): string | null {
   return `https://imobiliariasaojose.com.br/imoveis/${cleaned}`;
 }
 
-export function AIChatModal() {
+export function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
   const router = useRouter();
   const { userId } = useAuth();
 
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [, setProfileState] = useState<ProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>(null);
   const [isOnboardingTyping, setIsOnboardingTyping] = useState(false);
-  const [localMessages, setLocalMessages] = useState<
-    { id: string; role: "assistant" | "user"; content: string }[]
-  >([]);
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
 
   const [chatParams, setChatParams] = useQueryStates({
     chat_open: parseAsBoolean.withDefault(false),
@@ -185,6 +170,8 @@ export function AIChatModal() {
       api: "http://localhost:8081/ai/chat",
     }),
   });
+
+  const typedMessages = messages as ChatMessage[];
 
   const isStreaming = status === "streaming";
   const isLoading = status === "submitted" || isStreaming;
@@ -224,6 +211,24 @@ export function AIChatModal() {
         return "Qual bairro você prefere?";
       default:
         return "Vamos continuar.";
+    }
+  }
+
+  async function reloadProfile() {
+    if (!userId) return;
+
+    try {
+      const res = await fetch(`${API_URL}/profile/${userId}`);
+
+      if (!res.ok) {
+        console.error("Erro ao recarregar perfil:", await res.text());
+        return;
+      }
+
+      const data: ProfileData = await res.json();
+      setProfileState(data);
+    } catch (error) {
+      console.error("Erro ao recarregar perfil:", error);
     }
   }
 
@@ -270,8 +275,8 @@ export function AIChatModal() {
       return null;
     }
 
-    const updatedProfile = await res.json();
-    setProfile(updatedProfile);
+    const updatedProfile: ProfileData = await res.json();
+    setProfileState(updatedProfile);
     return updatedProfile;
   }
 
@@ -294,8 +299,8 @@ export function AIChatModal() {
       return;
     }
 
-    const updatedProfile = await res.json();
-    setProfile(updatedProfile);
+    const updatedProfile: ProfileData = await res.json();
+    setProfileState(updatedProfile);
     setIsOnboarding(false);
     setOnboardingStep(null);
     setIsOnboardingTyping(false);
@@ -313,7 +318,7 @@ export function AIChatModal() {
 
   useEffect(() => {
     if (
-      chatParams.chat_open &&
+      isOpen &&
       chatParams.chat_initial_message &&
       !initialMessageSentRef.current &&
       !isOnboarding
@@ -323,7 +328,7 @@ export function AIChatModal() {
       setChatParams({ chat_initial_message: null });
     }
   }, [
-    chatParams.chat_open,
+    isOpen,
     chatParams.chat_initial_message,
     sendMessage,
     setChatParams,
@@ -331,7 +336,7 @@ export function AIChatModal() {
   ]);
 
   useEffect(() => {
-    if (!chatParams.chat_open) {
+    if (!isOpen) {
       initialMessageSentRef.current = false;
       onboardingInitializedRef.current = false;
       setLocalMessages([]);
@@ -340,15 +345,30 @@ export function AIChatModal() {
       setIsOnboardingTyping(false);
       setLoadingProfile(true);
     }
-  }, [chatParams.chat_open]);
+  }, [isOpen]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, status, localMessages, isOnboardingTyping]);
+  }, [typedMessages, status, localMessages, isOnboardingTyping]);
+
+  useEffect(() => {
+    const hasProfileUpdate = typedMessages.some((message) =>
+      message.parts?.some(
+        (part) =>
+          part.type === "tool-atualizarPerfilPreferencias" &&
+          part.state === "output-available",
+      ),
+    );
+
+    if (hasProfileUpdate) {
+      reloadProfile();
+      router.refresh();
+    }
+  }, [typedMessages, router]);
 
   useEffect(() => {
     async function loadProfile() {
-      if (!userId || !chatParams.chat_open) return;
+      if (!userId || !isOpen) return;
       if (onboardingInitializedRef.current) return;
 
       try {
@@ -359,25 +379,25 @@ export function AIChatModal() {
         if (!res.ok) {
           console.error("Erro ao carregar perfil:", await res.text());
           onboardingInitializedRef.current = true;
-          setProfile(null);
+          setProfileState(null);
           setIsOnboarding(true);
           setLocalMessages([]);
           await askNextOnboardingQuestion("name");
           return;
         }
 
-        const data = await res.json();
+        const data: ProfileData | null = await res.json();
 
         if (!data) {
           onboardingInitializedRef.current = true;
-          setProfile(null);
+          setProfileState(null);
           setIsOnboarding(true);
           setLocalMessages([]);
           await askNextOnboardingQuestion("name");
           return;
         }
 
-        setProfile(data);
+        setProfileState(data);
 
         const nextStep = getNextMissingStep(data);
 
@@ -394,7 +414,7 @@ export function AIChatModal() {
       } catch (error) {
         console.error("Erro ao carregar perfil:", error);
         onboardingInitializedRef.current = true;
-        setProfile(null);
+        setProfileState(null);
         setIsOnboarding(true);
         setLocalMessages([]);
         await askNextOnboardingQuestion("name");
@@ -404,12 +424,13 @@ export function AIChatModal() {
     }
 
     loadProfile();
-  }, [userId, chatParams.chat_open]);
+  }, [userId, isOpen]);
 
-  if (!chatParams.chat_open) return null;
+  if (!isOpen) return null;
 
   const handleClose = () => {
     setChatParams({ chat_open: false, chat_initial_message: null });
+    onClose();
   };
 
   const onSubmit = async (values: ChatFormValues) => {
@@ -453,7 +474,12 @@ export function AIChatModal() {
       return;
     }
 
-    sendMessage({ text });
+    sendMessage({
+      text,
+      metadata: {
+        userId,
+      },
+    });
   };
 
   const handleSuggestion = async (text: string) => {
@@ -492,20 +518,24 @@ export function AIChatModal() {
       return;
     }
 
-    sendMessage({ text });
+    sendMessage({
+      text,
+      metadata: {
+        userId,
+      },
+    });
   };
 
-  const handleRedirectToSearch = (properties: any[]) => {
+  function handleRedirectToSearch(properties: PropertyResult[]) {
     if (!properties || properties.length === 0) return;
 
-    const ids = properties.map((p) => p.id).join(",");
+    const ids = properties.map((property) => property.id).join(",");
 
-    router.push(`/sugestoes?ids=${ids}`);
-  };
+    router.push(`/imoveis?ids=${ids}&chat_open=false&chat_initial_message=`);
+  }
 
   const handleRedirectToProperty = (propertyId: string) => {
-    handleClose();
-    router.push(`/imoveis/${propertyId}`);
+    router.push(`/imovel/${propertyId}?chat_open=false&chat_initial_message=`);
   };
 
   const chatContent = (
@@ -533,7 +563,7 @@ export function AIChatModal() {
           <ChatBubble role="assistant">Carregando seu perfil...</ChatBubble>
         )}
 
-        {messages.length === 0 &&
+        {typedMessages.length === 0 &&
           localMessages.length === 0 &&
           !isOnboarding &&
           !loadingProfile && (
@@ -568,21 +598,20 @@ export function AIChatModal() {
           </div>
         )}
 
-        {messages.map((message) => {
-          const textContent = message.parts
-            ?.filter((part: any) => part.type === "text")
-            .map((part: any) => part.text)
-            .join("");
+        {typedMessages.map((message) => {
+          const textContent =
+            message.parts
+              ?.filter((part): part is TextPart => part.type === "text")
+              .map((part) => part.text)
+              .join("") ?? "";
 
           return (
             <div key={message.id} className="flex flex-col">
               {textContent && (
-                <ChatBubble role={message.role as "assistant" | "user"}>
-                  {textContent}
-                </ChatBubble>
+                <ChatBubble role={message.role}>{textContent}</ChatBubble>
               )}
 
-              {message.parts?.map((part: any, index: number) => {
+              {message.parts?.map((part, index) => {
                 if (part.type === "tool-buscarImoveis") {
                   if (
                     part.state === "input-streaming" ||
@@ -608,15 +637,15 @@ export function AIChatModal() {
                   }
 
                   if (part.state === "output-available") {
-                    const properties = part.output;
+                    const properties = part.output ?? [];
 
-                    if (properties && properties.length > 0) {
+                    if (properties.length > 0) {
                       return (
                         <div
                           key={`result-${index}`}
                           className="flex flex-col gap-3 w-full mb-4">
                           <div className="flex flex-col gap-3 w-full pl-2 pr-2">
-                            {properties.map((prop: any) => {
+                            {properties.map((prop) => {
                               const validImageUrl = normalizeImageUrl(
                                 prop.mainImage,
                               );
@@ -634,7 +663,7 @@ export function AIChatModal() {
                                   key={prop.id}
                                   imovel={imovelFormatado}
                                   onClick={() =>
-                                    handleRedirectToSearch(part.input)
+                                    handleRedirectToProperty(prop.id)
                                   }
                                 />
                               );
@@ -658,6 +687,68 @@ export function AIChatModal() {
                         Desculpe, não encontrei nenhum imóvel com essas
                         características no momento. Quer tentar buscar de outra
                         forma?
+                      </ChatBubble>
+                    );
+                  }
+                }
+
+                if (part.type === "tool-atualizarPerfilPreferencias") {
+                  if (
+                    part.state === "input-streaming" ||
+                    part.state === "input-available"
+                  ) {
+                    return (
+                      <ChatBubble
+                        key={`tool-profile-loading-${index}`}
+                        role="assistant">
+                        Atualizando suas preferências...
+                      </ChatBubble>
+                    );
+                  }
+
+                  if (part.state === "output-error") {
+                    return (
+                      <ChatBubble
+                        key={`tool-profile-error-${index}`}
+                        role="assistant">
+                        Não consegui atualizar suas preferências agora.
+                      </ChatBubble>
+                    );
+                  }
+
+                  if (part.state === "output-available") {
+                    const output = part.output;
+
+                    const partesAtualizadas: string[] = [];
+
+                    if (output?.plan)
+                      partesAtualizadas.push(`plano: ${output.plan}`);
+                    if (output?.bedrooms != null)
+                      partesAtualizadas.push(`${output.bedrooms} quarto(s)`);
+                    if (output?.parkingSpots != null)
+                      partesAtualizadas.push(`${output.parkingSpots} vaga(s)`);
+                    if (output?.bathrooms != null)
+                      partesAtualizadas.push(`${output.bathrooms} banheiro(s)`);
+                    if (output?.neighborhood)
+                      partesAtualizadas.push(`bairro ${output.neighborhood}`);
+                    if (output?.transactionType)
+                      partesAtualizadas.push(
+                        `transação ${output.transactionType}`,
+                      );
+                    if (output?.propertyType)
+                      partesAtualizadas.push(`tipo ${output.propertyType}`);
+                    if (output?.maxPrice != null)
+                      partesAtualizadas.push(
+                        `até R$ ${Number(output.maxPrice).toLocaleString("pt-BR")}`,
+                      );
+
+                    return (
+                      <ChatBubble
+                        key={`tool-profile-success-${index}`}
+                        role="assistant">
+                        {partesAtualizadas.length > 0
+                          ? `Atualizei suas preferências: ${partesAtualizadas.join(", ")}.`
+                          : "Atualizei suas preferências com sucesso."}
                       </ChatBubble>
                     );
                   }
@@ -692,7 +783,7 @@ export function AIChatModal() {
       </div>
 
       <div className="flex shrink-0 flex-col gap-3 p-4 border-t border-gray-100 bg-white z-10">
-        {!isLoading && !isOnboarding && messages.length < 3 && (
+        {!isLoading && !isOnboarding && typedMessages.length < 3 && (
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
             {SUGGESTED_MESSAGES.map((suggestion) => (
               <button

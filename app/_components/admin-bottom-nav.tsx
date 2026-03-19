@@ -1,0 +1,55 @@
+"use client";
+
+import Link from "next/link";
+import { Home, MapPin, MessageSquare, Users, Plus } from "lucide-react";
+import { usePathname } from "next/navigation";
+
+export function AdminNav() {
+  const pathname = usePathname();
+
+  const getLinkClass = (path: string) => {
+    return pathname === path
+      ? "text-teal-500 flex flex-col items-center gap-1"
+      : "text-gray-400 hover:text-teal-500 flex flex-col items-center gap-1 transition-colors";
+  };
+
+  return (
+    <nav className="fixed bottom-0 w-full md:max-w-md bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.06)] px-6 py-4 flex justify-between items-center z-50">
+      <Link href="/admin/interesses">
+        <button className={getLinkClass("/admin")}>
+          <Home size={22} />
+          <span className="text-[9px] font-bold uppercase mt-0.5">Painel</span>
+        </button>
+      </Link>
+
+      <Link href="/admin/imoveis">
+        <button className={getLinkClass("/admin/imoveis")}>
+          <MapPin size={22} />
+          <span className="text-[9px] font-bold uppercase mt-0.5">Imóveis</span>
+        </button>
+      </Link>
+
+      <Link href="/admin/imoveis/novo">
+        <button className="relative -top-5 bg-gray-900 text-white p-4 rounded-full shadow-xl shadow-gray-900/30 hover:bg-gray-800 hover:scale-105 transition-all">
+          <Plus size={24} strokeWidth={2.5} />
+        </button>
+      </Link>
+
+      <Link href="/admin/mensagens">
+        <button className={getLinkClass("/admin/mensagens")}>
+          <MessageSquare size={22} />
+          <span className="text-[9px] font-bold uppercase mt-0.5">
+            Mensagens
+          </span>
+        </button>
+      </Link>
+
+      <Link href="/admin/equipe">
+        <button className={getLinkClass("/admin/equipe")}>
+          <Users size={22} />
+          <span className="text-[9px] font-bold uppercase mt-0.5">Equipe</span>
+        </button>
+      </Link>
+    </nav>
+  );
+}
