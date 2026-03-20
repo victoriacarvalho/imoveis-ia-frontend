@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import {
@@ -10,10 +9,8 @@ import {
   Shield,
   User as UserIcon,
   Mail,
-  MoreVertical,
   Trash2,
 } from "lucide-react";
-// Importe o seu AdminNav de onde ele estiver (ajuste o caminho se necessário)
 import { AdminNav } from "../../_components/admin-bottom-nav";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -25,6 +22,8 @@ interface TeamMember {
   isAdmin: boolean;
   createdAt: string;
 }
+
+export const dynamic = "force-dynamic";
 
 export default function AdminEquipePage() {
   const { userId, isLoaded } = useAuth();
@@ -40,7 +39,6 @@ export default function AdminEquipePage() {
     }
   }, [isLoaded, userId, router]);
 
-  // 1. Verifica se quem está acessando é Admin
   useEffect(() => {
     async function checkAdmin() {
       if (!userId) return;
@@ -57,19 +55,16 @@ export default function AdminEquipePage() {
     }
   }, [isLoaded, userId]);
 
-  // 2. Carrega a lista da equipe
   useEffect(() => {
     async function loadEquipe() {
       try {
         setLoading(true);
-        // Exemplo de rota (você precisará criar no Fastify: GET /admin/equipe)
         const res = await fetch(`${API_URL}/admin/equipe?userId=${userId}`);
 
         if (res.ok) {
           const data = await res.json();
           setEquipe(data);
         } else {
-          // Fallback de dados falsos apenas para você ver o visual enquanto não cria a rota
           setEquipe([
             {
               id: "1",
@@ -113,7 +108,6 @@ export default function AdminEquipePage() {
     )
       return;
 
-    // Aqui entraria a chamada DELETE para sua API
     setEquipe(equipe.filter((membro) => membro.id !== id));
   }
 
