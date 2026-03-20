@@ -28,8 +28,30 @@ export default function LoginRedirectPage() {
       }
 
       try {
+        const syncResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/profile/sync`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              email,
+              name: user.fullName ?? user.firstName ?? null,
+              image: user.imageUrl ?? null,
+            }),
+          },
+        );
+
+        if (!syncResponse.ok) {
+          console.error("Erro ao sincronizar usuário");
+          router.replace("/");
+          return;
+        }
+
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/me?email=${encodeURIComponent(email)}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/me?clerkId=${encodeURIComponent(user.id)}`,
           {
             method: "GET",
             cache: "no-store",
