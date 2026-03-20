@@ -13,8 +13,7 @@ import {
 } from "lucide-react";
 import { AdminNav } from "../../_components/admin-bottom-nav";
 
-const API_URL = "http://localhost:8081";
-
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 interface Lead {
   id: string;
   clientName: string;

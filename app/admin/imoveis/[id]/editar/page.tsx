@@ -8,8 +8,7 @@ import Link from "next/link";
 import { ChevronLeft, Loader2, Plus, X } from "lucide-react";
 import { AdminNav } from "../../../../_components/admin-bottom-nav";
 
-const API_URL = "http://localhost:8081";
-
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 interface FormDataState {
   isActive: boolean | undefined;
   title: string;

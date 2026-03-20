@@ -20,6 +20,8 @@ interface Property {
   transactionType: string;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export default function AppHome() {
   const { user } = useUser();
   const [imoveis, setImoveis] = useState<Property[]>([]);
@@ -40,7 +42,7 @@ export default function AppHome() {
 
     params.append("take", "10");
 
-    fetch(`http://localhost:8081/imoveis?${params.toString()}`)
+    fetch(`${API_URL}/imoveis?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.imoveis) {

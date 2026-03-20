@@ -117,7 +117,7 @@ type ChatMessage = {
   parts?: MessagePart[];
 };
 
-const API_URL = "http://localhost:8081";
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 function normalizeImageUrl(mainImage?: string | null): string | null {
   if (!mainImage || !mainImage.trim()) return null;
@@ -165,9 +165,11 @@ export function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
     chat_initial_message: parseAsString,
   });
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
-      api: "http://localhost:8081/ai/chat",
+      api: `${API_URL}/ai/chat`,
     }),
   });
 

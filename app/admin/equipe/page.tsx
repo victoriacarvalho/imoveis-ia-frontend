@@ -16,8 +16,7 @@ import {
 // Importe o seu AdminNav de onde ele estiver (ajuste o caminho se necessário)
 import { AdminNav } from "../../_components/admin-bottom-nav";
 
-const API_URL = "http://localhost:8081";
-
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 interface TeamMember {
   id: string;
   name: string | null;

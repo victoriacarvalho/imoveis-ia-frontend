@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Loader2 } from "lucide-react";
 
-const API_URL = "http://localhost:8081";
-
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 interface PropertyInfo {
   id: string;
   title: string;

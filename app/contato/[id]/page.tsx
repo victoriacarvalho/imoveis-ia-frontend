@@ -30,7 +30,7 @@ interface ChatMessage {
   timestamp: string;
 }
 
-const API_URL = "http://localhost:8081";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 function extrairNumerosTelefone(valor: string) {
   return valor.replace(/\D/g, "");

@@ -26,6 +26,8 @@ interface Property {
   price: number;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export default function SugestoesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,7 +46,7 @@ export default function SugestoesPage() {
     if (transactionType) params.append("transactionType", transactionType);
     if (propertyType) params.append("propertyType", propertyType);
 
-    fetch(`http://localhost:8081/imoveis?${params.toString()}`)
+    fetch(`${API_URL}/imoveis?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         let listaFinal = data.imoveis || [];

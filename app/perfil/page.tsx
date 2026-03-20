@@ -115,13 +115,14 @@ export default function PerfilPage() {
   const { user } = useUser();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     async function loadProfile() {
       if (!userId) return;
 
       try {
-        const res = await fetch(`http://localhost:8081/profile/${userId}`);
+        const res = await fetch(`${API_URL}/profile/${userId}`);
         const data = await res.json();
         setProfile(data);
       } catch (error) {

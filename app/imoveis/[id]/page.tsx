@@ -31,7 +31,7 @@ interface PropertyDetails {
   gallery: string[];
 }
 
-const API_URL = "http://localhost:8081";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 function extrairDadosDaDescricao(descricao: string, imovel: PropertyDetails) {
   let quartos = imovel.bedrooms || 0;
