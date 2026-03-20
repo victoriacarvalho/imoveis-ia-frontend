@@ -117,7 +117,11 @@ type ChatMessage = {
   parts?: MessagePart[];
 };
 
+<<<<<<< HEAD
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+=======
+const API_URL = "https://imoveis-ia-api.onrender.com";
+>>>>>>> f3dfe1294a62e59d5394c826110acbdc5883d1d4
 
 function normalizeImageUrl(mainImage?: string | null): string | null {
   if (!mainImage || !mainImage.trim()) return null;
@@ -169,7 +173,11 @@ export function AIChatModal({ isOpen, onClose }: AIChatModalProps) {
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
+<<<<<<< HEAD
       api: `${API_URL}/ai/chat`,
+=======
+      api: "https://imoveis-ia-api.onrender.com",
+>>>>>>> f3dfe1294a62e59d5394c826110acbdc5883d1d4
     }),
   });
 

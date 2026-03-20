@@ -42,7 +42,11 @@ export default function AppHome() {
 
     params.append("take", "10");
 
+<<<<<<< HEAD
     fetch(`${API_URL}/imoveis?${params.toString()}`)
+=======
+    fetch(`https://imoveis-ia-api.onrender.com`)
+>>>>>>> f3dfe1294a62e59d5394c826110acbdc5883d1d4
       .then((res) => res.json())
       .then((data) => {
         if (data.imoveis) {

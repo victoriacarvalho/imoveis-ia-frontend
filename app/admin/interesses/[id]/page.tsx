@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Loader2 } from "lucide-react";
 
+<<<<<<< HEAD
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+=======
+const API_URL = "https://imoveis-ia-api.onrender.com";
+
+>>>>>>> f3dfe1294a62e59d5394c826110acbdc5883d1d4
 interface PropertyInfo {
   id: string;
   title: string;
