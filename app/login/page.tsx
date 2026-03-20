@@ -12,7 +12,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isLoaded && userId) {
-      router.replace("/");
+      router.replace("/login/redirect");
     }
   }, [isLoaded, userId, router]);
 
@@ -59,7 +59,10 @@ export default function LoginPage() {
           O app que vai transformar a forma como você busca imóveis.
         </p>
 
-        <SignInButton mode="modal" fallbackRedirectUrl="/" forceRedirectUrl="/">
+        <SignInButton
+          mode="modal"
+          fallbackRedirectUrl="/login/redirect"
+          forceRedirectUrl="/login/redirect">
           <Button variant="outline">
             <LogInIcon className="mr-2" />
             Fazer login ou criar conta
