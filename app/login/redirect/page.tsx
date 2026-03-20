@@ -51,7 +51,7 @@ export default function LoginRedirectPage() {
         }
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/me?clerkId=${encodeURIComponent(user.id)}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/me?email=${encodeURIComponent(email)}`,
           {
             method: "GET",
             cache: "no-store",

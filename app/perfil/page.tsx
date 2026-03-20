@@ -147,7 +147,7 @@ export default function PerfilPage() {
   return (
     <div className="mx-auto min-h-[100dvh] max-w-md bg-[#f5f5f5] px-5 pt-6 pb-28">
       <h1 className="text-[24px] font-black tracking-tight text-black">
-        FIT.AI
+        IMÓVEIS.AI
       </h1>
 
       <div className="mt-10 flex items-center gap-4">
