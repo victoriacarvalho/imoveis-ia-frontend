@@ -122,11 +122,8 @@ export default function PerfilPage() {
       if (!userId) return;
 
       try {
-<<<<<<< HEAD
         const res = await fetch(`${API_URL}/profile/${userId}`);
-=======
-        const res = await fetch(`https://imoveis-ia-api.onrender.com/profile/${userId}`);
->>>>>>> f3dfe1294a62e59d5394c826110acbdc5883d1d4
+
         const data = await res.json();
         setProfile(data);
       } catch (error) {

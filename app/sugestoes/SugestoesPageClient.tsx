@@ -46,11 +46,7 @@ export default function SugestoesPage() {
     if (transactionType) params.append("transactionType", transactionType);
     if (propertyType) params.append("propertyType", propertyType);
 
-<<<<<<< HEAD
     fetch(`${API_URL}/imoveis?${params.toString()}`)
-=======
-    fetch(`https://imoveis-ia-api.onrender.com`)
->>>>>>> f3dfe1294a62e59d5394c826110acbdc5883d1d4
       .then((res) => res.json())
       .then((data) => {
         let listaFinal = data.imoveis || [];

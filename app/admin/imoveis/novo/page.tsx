@@ -6,12 +6,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Loader2, Plus, X } from "lucide-react";
 
-<<<<<<< HEAD
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
-=======
-const API_URL = "https://imoveis-ia-api.onrender.com";
 
->>>>>>> f3dfe1294a62e59d5394c826110acbdc5883d1d4
 interface FormDataState {
   status: string | number | readonly string[] | undefined;
   title: string;
