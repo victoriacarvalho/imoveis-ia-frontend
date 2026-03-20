@@ -13,6 +13,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ptBR } from "@clerk/localizations";
 import { usePathname } from "next/navigation";
 import { useQueryStates, parseAsBoolean } from "nuqs";
+import { UserSync } from "./_components/user-sync";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -26,6 +27,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-foreground">
+      <UserSync />
       <AdminAutoRedirect />
 
       <main className="flex-1 pb-24">{children}</main>
