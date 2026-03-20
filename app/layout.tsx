@@ -3,6 +3,7 @@
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { BottomNav } from "./_components/bottom-nav";
 import { AdminNav } from "./_components/admin-bottom-nav";
+import { AdminAutoRedirect } from "./_components/admin-auto-redirect";
 import "./globals.css";
 import { AIChatModal } from "./_components/chat/AIChatModal";
 import { Suspense } from "react";
@@ -25,8 +26,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-foreground">
+      <AdminAutoRedirect />
+
       <main className="flex-1 pb-24">{children}</main>
+
       {isAdminRoute ? <AdminNav /> : <BottomNav />}
+
       <AIChatModal
         isOpen={chatParams.chat_open}
         onClose={() => setChatParams({ chat_open: false })}

@@ -1,31 +1,35 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
-export default function LoginRedirectPage() {
+export function AdminAutoRedirect() {
   const { isLoaded, isSignedIn, user } = useUser();
+  const pathname = usePathname();
   const router = useRouter();
-  const hasRun = useRef(false);
+  const checkingRef = useRef(false);
 
   useEffect(() => {
-    async function resolveRedirect() {
+    async function checkAdminAndRedirect() {
       if (!isLoaded) return;
-      if (hasRun.current) return;
-      hasRun.current = true;
+      if (!isSignedIn || !user) return;
+      if (checkingRef.current) return;
 
-      if (!isSignedIn || !user) {
-        router.replace("/login");
+      if (pathname.startsWith("/admin")) return;
+      if (
+        pathname.startsWith("/login") ||
+        pathname.startsWith("/sign-in") ||
+        pathname.startsWith("/sign-up")
+      ) {
         return;
       }
 
       const email = user.primaryEmailAddress?.emailAddress;
 
-      if (!email) {
-        router.replace("/");
-        return;
-      }
+      if (!email) return;
+
+      checkingRef.current = true;
 
       try {
         const response = await fetch(
@@ -36,31 +40,22 @@ export default function LoginRedirectPage() {
           },
         );
 
-        if (!response.ok) {
-          router.replace("/");
-          return;
-        }
+        if (!response.ok) return;
 
         const data = await response.json();
 
         if (data?.isAdmin === true) {
           router.replace("/admin/interesses");
-          return;
         }
-
-        router.replace("/");
       } catch (error) {
         console.error("Erro ao verificar admin:", error);
-        router.replace("/");
+      } finally {
+        checkingRef.current = false;
       }
     }
 
-    resolveRedirect();
-  }, [isLoaded, isSignedIn, user, router]);
+    checkAdminAndRedirect();
+  }, [isLoaded, isSignedIn, user, pathname, router]);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-white text-gray-600">
-      Redirecionando...
-    </div>
-  );
+  return null;
 }

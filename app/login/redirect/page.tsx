@@ -16,14 +16,20 @@ export default function LoginRedirectPage() {
       hasRun.current = true;
 
       if (!isSignedIn || !user) {
-        router.replace("/sign-in");
+        router.replace("/login");
+        return;
+      }
+
+      const email = user.primaryEmailAddress?.emailAddress;
+
+      if (!email) {
+        router.replace("/");
         return;
       }
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
         const response = await fetch(
-          `${apiUrl}/me?clerkId=${encodeURIComponent(user.id)}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/me?email=${encodeURIComponent(email)}`,
           {
             method: "GET",
             cache: "no-store",
