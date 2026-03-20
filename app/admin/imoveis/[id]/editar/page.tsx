@@ -208,8 +208,6 @@ export default function EditarImovelPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-        <AdminNav />
-
         <div className="mb-6 flex items-center gap-3">
           <Link
             href="/admin/imoveis"

@@ -137,8 +137,6 @@ export default function AdminEquipePage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 pb-32">
       <div className="max-w-6xl mx-auto">
-        <AdminNav />
-
         {/* CABEÇALHO */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>

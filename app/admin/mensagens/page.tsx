@@ -187,8 +187,6 @@ export default function AdminMensagensPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 pb-32">
       <div className="max-w-5xl mx-auto">
-        <AdminNav />
-
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-gray-900">
             Mensagens e Leads

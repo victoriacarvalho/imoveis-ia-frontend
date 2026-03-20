@@ -154,8 +154,6 @@ export default function AdminImoveisPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <AdminNav />
-
         <div className="mb-8 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-gray-900">Imóveis</h1>

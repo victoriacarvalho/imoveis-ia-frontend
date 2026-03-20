@@ -152,8 +152,6 @@ export default function AdminInteressesPage() {
           </Link>
         </div>
 
-        <AdminNav />
-
         {summary && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
